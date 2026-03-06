@@ -2,7 +2,7 @@
   "name": "OSINT Threat Suite",
   "short_name": "OTS",
   "description": "Professional OSINT-driven threat analysis for security teams and investigators.",
-  "start_url": "/",
+  "start_url": "/osint-suite/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#08090b",
