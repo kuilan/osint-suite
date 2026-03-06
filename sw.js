@@ -1,7 +1,7 @@
 const CACHE = 'ots-v1';
 const ASSETS = [
-  '/',
-  '/index.html',
+  '/osint-suite/',
+  '/osint-suite/index.html',
   '/manifest.json',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
