@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>OSINT Threat Suite</title>
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#08090b">
+<meta name="apple-mobile-web-app-title" content="OTS">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --bg:          #08090b;
+  --surface:     #0e1014;
+  --surface-2:   #13161b;
+  --surface-3:   #181c22;
+  --border:      #1c2028;
+  --border-hi:   #262d38;
+  --text:        #c8cdd6;
+  --text-dim:    #545c6b;
+  --text-muted:  #2d3340;
+  --accent:      #3d7ab5;
+  --accent-2:    #4d8fcc;
+  --accent-glow: rgba(61,122,181,0.10);
+  --red:         #b03030;
+  --red-soft:    rgba(176,48,48,0.12);
+  --amber:       #c08020;
+  --amber-soft:  rgba(192,128,32,0.12);
+  --green:       #2a6e48;
+  --green-glow:  rgba(42,110,72,0.15);
+  --green-soft:  rgba(42,110,72,0.12);
+  --oai:         #10a37f;
+  --oai-soft:    rgba(16,163,127,0.12);
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+  --r: 3px;
+}
+
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; line-height: 1.6; overflow-x: hidden; }
+.app { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* TOPBAR */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; height: 52px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky; top: 0; z-index: 100;
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-mark {
+  width: 30px; height: 30px; border: 1px solid var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 10px; color: var(--accent); letter-spacing: 0.05em;
+}
+.brand-name { font-size: 11px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); }
+.brand-name span { color: var(--text); }
+
+.settings-btn {
+  display: flex; align-items: center; gap: 7px;
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  cursor: pointer; padding: 7px 14px;
+  border: 1px solid var(--border); border-radius: var(--r);
+  transition: all 0.2s; background: transparent; color: var(--text-dim);
+  letter-spacing: 0.08em;
+}
+.settings-btn:hover { border-color: var(--border-hi); color: var(--text); }
+.settings-btn .provider-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; padding: 2px 7px; border-radius: 2px;
+  font-family: var(--mono); font-weight: 500; letter-spacing: 0.06em;
+}
+.badge-claude  { background: var(--accent-glow); color: var(--accent-2); border: 1px solid rgba(61,122,181,0.3); }
+.badge-openai  { background: var(--oai-soft);    color: var(--oai);      border: 1px solid rgba(16,163,127,0.3); }
+.badge-none    { background: var(--red-soft);    color: var(--red);      border: 1px solid rgba(176,48,48,0.3); }
+.status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; opacity: 0.7; }
+
+/* MODULE NAV */
+.mod-nav { display: flex; border-bottom: 1px solid var(--border); background: var(--surface); overflow-x: auto; scrollbar-width: none; }
+.mod-nav::-webkit-scrollbar { display: none; }
+.mod-tab {
+  flex: 1; min-width: 110px; padding: 13px 16px;
+  font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-dim); cursor: pointer; border-bottom: 2px solid transparent;
+  text-align: center; transition: color 0.2s, border-color 0.2s;
+  white-space: nowrap; font-family: var(--mono); user-select: none;
+}
+.mod-tab:hover { color: var(--text); }
+.mod-tab.active { color: var(--accent-2); border-bottom-color: var(--accent); }
+.mod-tab .n { opacity: 0.35; margin-right: 5px; }
+
+/* MAIN */
+.main { flex: 1; max-width: 760px; width: 100%; margin: 0 auto; padding: 24px 16px 100px; }
+
+/* SECTION HEADER */
+.sec-hdr { margin-bottom: 22px; }
+.sec-hdr h1 { font-size: 17px; font-weight: 600; color: var(--text); letter-spacing: 0.01em; }
+.sec-hdr p { font-size: 12px; color: var(--text-dim); margin-top: 4px; line-height: 1.5; }
+
+/* CARD */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 20px; margin-bottom: 14px; }
+.card-lbl {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--text-dim); margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.card-lbl::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* FIELDS */
+.field { margin-bottom: 13px; }
+.field label { display: block; font-size: 10px; font-family: var(--mono); color: var(--text-dim); letter-spacing: 0.1em; margin-bottom: 5px; }
+.field input, .field textarea, .field select {
+  width: 100%; background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 9px 12px;
+  font-family: var(--sans); font-size: 14px; color: var(--text);
+  outline: none; transition: border-color 0.2s; -webkit-appearance: none;
+}
+.field input::placeholder, .field textarea::placeholder { color: var(--text-muted); }
+.field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); }
+.field textarea { resize: vertical; min-height: 72px; line-height: 1.5; }
+.field select option { background: var(--surface-2); }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 460px) { .row2 { grid-template-columns: 1fr; } }
+
+/* BUTTONS */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 10px 18px; font-family: var(--mono); font-size: 11px;
+  font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase;
+  border: none; border-radius: var(--r); cursor: pointer; transition: all 0.2s; white-space: nowrap;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-2); }
+.btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+.btn-ghost:hover { border-color: var(--border-hi); color: var(--text); }
+.btn-danger { background: transparent; color: var(--red); border: 1px solid rgba(176,48,48,0.35); }
+.btn-danger:hover { background: var(--red-soft); }
+.btn-full { width: 100%; }
+
+/* MODAL */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.82);
+  z-index: 200; display: flex; align-items: center; justify-content: center;
+  padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--surface-2); border: 1px solid var(--border-hi);
+  border-radius: var(--r); padding: 0; width: 100%; max-width: 440px;
+  transform: translateY(8px); transition: transform 0.2s; overflow: hidden;
+}
+.overlay.open .modal { transform: translateY(0); }
+.modal-head {
+  padding: 18px 22px 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-head h2 { font-size: 13px; font-weight: 600; letter-spacing: 0.05em; }
+.modal-head .close-btn {
+  font-size: 18px; color: var(--text-dim); cursor: pointer; background: none; border: none;
+  line-height: 1; padding: 2px 6px; border-radius: var(--r); transition: color 0.2s;
+}
+.modal-head .close-btn:hover { color: var(--text); }
+.modal-body { padding: 20px 22px; }
+.modal-footer { padding: 14px 22px 18px; border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: center; }
+
+/* PROVIDER TOGGLE */
+.provider-toggle { display: flex; gap: 8px; margin-bottom: 18px; }
+.ptab {
+  flex: 1; padding: 10px 12px; border-radius: var(--r); cursor: pointer;
+  border: 1px solid var(--border); background: transparent;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+  color: var(--text-dim); transition: all 0.2s; text-align: center; font-weight: 500;
+}
+.ptab:hover { border-color: var(--border-hi); color: var(--text); }
+.ptab.active-claude { background: var(--accent-glow); border-color: var(--accent); color: var(--accent-2); }
+.ptab.active-openai { background: var(--oai-soft); border-color: var(--oai); color: var(--oai); }
+
+/* KEY INPUT ROW */
+.key-row { display: flex; gap: 8px; align-items: flex-end; }
+.key-row .field { flex: 1; margin-bottom: 0; }
+.key-row .btn { flex-shrink: 0; padding: 9px 14px; }
+
+/* KEY STATUS */
+.key-status {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 12px; border-radius: var(--r); margin-top: 8px;
+  font-family: var(--mono); font-size: 11px;
+}
+.key-status.ok  { background: var(--green-glow); border: 1px solid rgba(42,110,72,0.4); color: #6dbf8a; }
+.key-status.ok .sdot  { width: 6px; height: 6px; border-radius: 50%; background: #6dbf8a; }
+.key-status.bad { background: var(--red-soft); border: 1px solid rgba(176,48,48,0.3); color: #d47070; }
+.key-status.bad .sdot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); }
+
+/* PROVIDER PANEL */
+.prov-panel { display: none; }
+.prov-panel.active { display: block; }
+
+/* SECURITY NOTE */
+.sec-note {
+  background: var(--surface-3); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 10px 12px; margin-top: 16px;
+  font-size: 11px; color: var(--text-dim); line-height: 1.5;
+  display: flex; gap: 8px;
+}
+
+/* STREAMING */
+.stream-bar {
+  display: none; align-items: center; gap: 10px;
+  padding: 13px 16px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--r); margin-bottom: 14px;
+  font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+}
+.stream-bar.on { display: flex; }
+.dots { display: flex; gap: 4px; }
+.dots span {
+  width: 5px; height: 5px; border-radius: 50%; background: var(--accent);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.dots span:nth-child(2) { animation-delay: 0.2s; }
+.dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes pulse {
+  0%,100% { opacity:0.2; transform:scale(0.8); }
+  50%      { opacity:1;   transform:scale(1);   }
+}
+
+/* PROVIDER INDICATOR ON STREAM BAR */
+.prov-tag {
+  margin-left: auto; font-family: var(--mono); font-size: 10px;
+  padding: 2px 8px; border-radius: 2px;
+}
+.prov-tag-claude { background: var(--accent-glow); color: var(--accent-2); }
+.prov-tag-openai { background: var(--oai-soft); color: var(--oai); }
+
+/* ERROR */
+.err-bar {
+  display: none; align-items: center; gap: 10px;
+  padding: 11px 14px; background: var(--red-soft);
+  border: 1px solid rgba(176,48,48,0.28); border-radius: var(--r);
+  margin-bottom: 14px; font-size: 12px; color: #d47070;
+}
+.err-bar.on { display: flex; }
+
+/* DISCLAIMER */
+.disclaimer {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-left: 2px solid var(--text-muted); border-radius: var(--r);
+  padding: 11px 14px; font-size: 11px; color: var(--text-dim); line-height: 1.5; margin-bottom: 14px;
+}
+
+/* BANNER */
+#keyBanner {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: rgba(61,122,181,0.07); border: 1px solid rgba(61,122,181,0.22);
+  border-radius: var(--r); padding: 12px 16px; margin-bottom: 18px; flex-wrap: wrap;
+}
+
+/* REPORT */
+.report { display: none; }
+.report.on { display: block; }
+
+.rpt-hdr {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 18px 20px; margin-bottom: 14px;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+}
+.rpt-subject .lbl { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 3px; }
+.rpt-subject .name { font-size: 20px; font-weight: 600; color: var(--text); }
+.rpt-subject .co { font-size: 11px; color: var(--accent-2); margin-top: 3px; font-family: var(--mono); display: none; }
+.rpt-meta { text-align: right; flex-shrink: 0; }
+.rpt-meta .ts  { font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
+.rpt-meta .cid { font-family: var(--mono); font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+.rpt-meta .ai-badge { font-family: var(--mono); font-size: 10px; margin-top: 4px; display: inline-block; padding: 2px 7px; border-radius: 2px; }
+
+.rpt-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+
+.rpt-sec { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); margin-bottom: 10px; overflow: hidden; }
+.rpt-sec-hdr { padding: 12px 18px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+.sec-ico { width: 26px; height: 26px; border-radius: var(--r); display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+.ico-overall { background: var(--surface-3); color: var(--text-dim); }
+.ico-hist    { background: var(--amber-soft); color: var(--amber); }
+.ico-current { background: var(--red-soft);   color: var(--red);   }
+.ico-future  { background: var(--red-soft);   color: #c06040;      }
+.ico-corp    { background: var(--accent-glow);color: var(--accent-2); }
+.ico-recs    { background: var(--green-soft); color: var(--green); }
+.sec-title { font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; font-family: var(--mono); color: var(--text); }
+.rpt-sec-body { padding: 16px 18px; font-size: 13.5px; line-height: 1.78; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+
+/* COMING SOON */
+.coming { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 280px; gap: 10px; color: var(--text-dim); text-align: center; }
+.coming .ci { font-size: 28px; opacity: 0.25; }
+.coming h2 { font-size: 13px; font-weight: 500; color: var(--text-dim); letter-spacing: 0.1em; font-family: var(--mono); }
+.coming p { font-size: 12px; color: var(--text-muted); max-width: 260px; line-height: 1.5; }
+
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">OTS</div>
+      <div class="brand-name"><span>OSINT</span> Threat Suite</div>
+    </div>
+    <button class="settings-btn" id="settingsBtn" onclick="openModal()">
+      ⚙
+      <span class="provider-badge badge-none" id="topBadge">
+        <span class="status-dot"></span>
+        <span id="topBadgeLabel">NO KEY</span>
+      </span>
+    </button>
+  </header>
+
+  <!-- MODULE NAV -->
+  <nav class="mod-nav">
+    <div class="mod-tab active" onclick="switchMod('person',this)"><span class="n">01</span>PERSON</div>
+    <div class="mod-tab" onclick="switchMod('entity',this)"><span class="n">02</span>ENTITY</div>
+    <div class="mod-tab" onclick="switchMod('location',this)"><span class="n">03</span>LOCATION</div>
+  </nav>
+
+  <main class="main">
+
+    <!-- BANNER -->
+    <div id="keyBanner">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:15px;">🔑</span>
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px;">API Key Required</div>
+          <div style="font-size:11px;color:var(--text-dim);line-height:1.4;">Configure your AI provider to enable threat analysis. Keys are saved locally to your device.</div>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="openModal()" style="flex-shrink:0;">+ CONFIGURE</button>
+    </div>
+
+    <!-- MODULE 01: PERSON -->
+    <div id="mod-person">
+      <div class="sec-hdr">
+        <h1>Person Threat Analysis</h1>
+        <p>OSINT-driven assessment of threat indicators, historical incidents, and forward-looking risk factors associated with a named individual.</p>
+      </div>
+
+      <div class="disclaimer">
+        ⚠&nbsp; Analysis is AI-generated from OSINT heuristics. All findings must be verified by a qualified analyst before operational use. Not a substitute for licensed investigative services.
+      </div>
+
+      <div class="card">
+        <div class="card-lbl">Subject Information</div>
+        <div class="field">
+          <label>FULL NAME *</label>
+          <input type="text" id="fName" placeholder="e.g. John Michael Doe" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>KNOWN ALIAS (optional)</label>
+            <input type="text" id="fAlias" placeholder="e.g. Johnny Doe" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="field">
+            <label>LOCATION / REGION (optional)</label>
+            <input type="text" id="fLoc" placeholder="e.g. Chicago, IL" autocomplete="off" spellcheck="false">
+          </div>
+        </div>
+        <div class="field">
+          <label>COMPANY / ORGANIZATION (optional)</label>
+          <input type="text" id="fCompany" placeholder="e.g. Acme Corporation" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="field">
+          <label>ADDITIONAL CONTEXT (optional)</label>
+          <textarea id="fContext" placeholder="Role, industry, known disputes, public profile notes, social media handles..."></textarea>
+        </div>
+        <div style="margin-top:14px;">
+          <button class="btn btn-primary btn-full" onclick="runAnalysis()" id="analyzeBtn">▶&nbsp; RUN THREAT ANALYSIS</button>
+        </div>
+      </div>
+
+      <div class="stream-bar" id="streamBar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <span id="streamMsg">Initializing OSINT analysis engine...</span>
+        <span class="prov-tag" id="streamProvTag"></span>
+      </div>
+
+      <div class="err-bar" id="errBar">
+        <span>⚠</span><span id="errMsg">An error occurred.</span>
+      </div>
+
+      <!-- REPORT -->
+      <div class="report" id="rptContainer">
+        <div class="rpt-hdr">
+          <div class="rpt-subject">
+            <div class="lbl">Subject</div>
+            <div class="name" id="rName"></div>
+            <div class="co" id="rCo"></div>
+          </div>
+          <div class="rpt-meta">
+            <div class="ts" id="rTs"></div>
+            <div class="cid" id="rCid"></div>
+            <div class="ai-badge" id="rAiBadge"></div>
+          </div>
+        </div>
+        <div class="rpt-actions">
+          <button class="btn btn-ghost" onclick="copyRpt()">⎘&nbsp; COPY REPORT</button>
+          <button class="btn btn-ghost" onclick="resetForm()">↺&nbsp; NEW ANALYSIS</button>
+        </div>
+        <div class="rpt-sec">
+          <div class="rpt-sec-hdr"><div class="sec-ico ico-overall">◈</div><div class="sec-title">Overall Threat Assessment</div></div>
+          <div class="rpt-sec-body" id="rOverall"></div>
+        </div>
+        <div class="rpt-sec">
+          <div class="rpt-sec-hdr"><div class="sec-ico ico-hist">⏵</div><div class="sec-title">Historical Threat Indicators</div></div>
+          <div class="rpt-sec-body" id="rHist"></div>
+        </div>
+        <div class="rpt-sec">
+          <div class="rpt-sec-hdr"><div class="sec-ico ico-current">⚑</div><div class="sec-title">Current Threat Activity</div></div>
+          <div class="rpt-sec-body" id="rCurrent"></div>
+        </div>
+        <div class="rpt-sec">
+          <div class="rpt-sec-hdr"><div class="sec-ico ico-future">◉</div><div class="sec-title">Forward-Looking Risk Indicators</div></div>
+          <div class="rpt-sec-body" id="rFuture"></div>
+        </div>
+        <div class="rpt-sec">
+          <div class="rpt-sec-hdr"><div class="sec-ico ico-corp">⬡</div><div class="sec-title">Corporate & Organizational Nexus</div></div>
+          <div class="rpt-sec-body" id="rCorp"></div>
+        </div>
+        <div class="rpt-sec">
+          <div class="rpt-sec-hdr"><div class="sec-ico ico-recs">→</div><div class="sec-title">Analyst Recommendations</div></div>
+          <div class="rpt-sec-body" id="rRecs"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE 02 -->
+    <div id="mod-entity" style="display:none">
+      <div class="coming">
+        <div class="ci">⬡</div>
+        <h2>Entity / Organization Module</h2>
+        <p>OSINT threat analysis for companies, organizations, and legal entities. Coming in the next build.</p>
+      </div>
+    </div>
+
+    <!-- MODULE 03 -->
+    <div id="mod-location" style="display:none">
+      <div class="coming">
+        <div class="ci">◎</div>
+        <h2>Location / Venue Module</h2>
+        <p>Threat environment assessment for physical locations, venues, and geographic areas of interest. Coming in the next build.</p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="overlay" id="overlay" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>AI PROVIDER SETTINGS</h2>
+      <button class="close-btn" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- PROVIDER TOGGLE -->
+      <div style="font-size:10px;font-family:var(--mono);letter-spacing:0.12em;color:var(--text-dim);margin-bottom:10px;">SELECT PROVIDER</div>
+      <div class="provider-toggle">
+        <button class="ptab" id="ptabClaude" onclick="selectProvider('claude')">
+          ◈ CLAUDE (Anthropic)
+        </button>
+        <button class="ptab" id="ptabOpenai" onclick="selectProvider('openai')">
+          ◯ GPT-4o (OpenAI)
+        </button>
+      </div>
+
+      <!-- CLAUDE PANEL -->
+      <div class="prov-panel" id="panelClaude">
+        <div class="field">
+          <label>ANTHROPIC API KEY</label>
+          <div class="key-row">
+            <div class="field">
+              <input type="password" id="claudeKeyInput" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter') saveKey('claude')">
+            </div>
+            <button class="btn btn-primary" onclick="saveKey('claude')">SAVE</button>
+          </div>
+        </div>
+        <div id="claudeKeyStatus" style="display:none" class="key-status ok">
+          <div class="sdot"></div>
+          <span>Key saved — Claude (Opus) active</span>
+          <button class="btn btn-danger" onclick="clearKey('claude')" style="margin-left:auto;padding:3px 10px;font-size:10px;">CLEAR</button>
+        </div>
+        <div class="sec-note">
+          🔒 Stored in your browser's localStorage. Never transmitted except to api.anthropic.com during analysis. To revoke, tap CLEAR above.
+        </div>
+      </div>
+
+      <!-- OPENAI PANEL -->
+      <div class="prov-panel" id="panelOpenai">
+        <div class="field">
+          <label>OPENAI API KEY</label>
+          <div class="key-row">
+            <div class="field">
+              <input type="password" id="openaiKeyInput" placeholder="sk-..." autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter') saveKey('openai')">
+            </div>
+            <button class="btn btn-primary" onclick="saveKey('openai')">SAVE</button>
+          </div>
+        </div>
+        <div id="openaiKeyStatus" style="display:none" class="key-status ok">
+          <div class="sdot"></div>
+          <span>Key saved — GPT-4o active</span>
+          <button class="btn btn-danger" onclick="clearKey('openai')" style="margin-left:auto;padding:3px 10px;font-size:10px;">CLEAR</button>
+        </div>
+        <div class="sec-note">
+          🔒 Stored in your browser's localStorage. Never transmitted except to api.openai.com during analysis. To revoke, tap CLEAR above.
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">CLOSE</button>
+      <div style="margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--text-muted);">Keys stored on-device only</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+const STORAGE_CLAUDE = 'ots_claude_key';
+const STORAGE_OPENAI = 'ots_openai_key';
+const STORAGE_PROVIDER = 'ots_provider';
+
+let state = {
+  claudeKey: localStorage.getItem(STORAGE_CLAUDE) || '',
+  openaiKey: localStorage.getItem(STORAGE_OPENAI) || '',
+  provider:  localStorage.getItem(STORAGE_PROVIDER) || 'claude'
+};
+let reportText = '';
+
+// ── INIT ──
+function init() {
+  selectProvider(state.provider, true);
+  updateTopBadge();
+  if (state.claudeKey || state.openaiKey) {
+    document.getElementById('keyBanner').style.display = 'none';
+  }
+  if (state.claudeKey) showKeyStatus('claude', true);
+  if (state.openaiKey) showKeyStatus('openai', true);
+}
+
+// ── MODULE SWITCH ──
+function switchMod(name, el) {
+  ['person','entity','location'].forEach(m => {
+    document.getElementById('mod-' + m).style.display = (m === name) ? 'block' : 'none';
+  });
+  document.querySelectorAll('.mod-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── PROVIDER SELECTION ──
+function selectProvider(p, silent) {
+  state.provider = p;
+  if (!silent) localStorage.setItem(STORAGE_PROVIDER, p);
+
+  document.querySelectorAll('.prov-panel').forEach(el => el.classList.remove('active'));
+  document.getElementById('panel' + capitalize(p)).classList.add('active');
+
+  const tc = document.getElementById('ptabClaude');
+  const to = document.getElementById('ptabOpenai');
+  tc.className = 'ptab' + (p === 'claude' ? ' active-claude' : '');
+  to.className = 'ptab' + (p === 'openai' ? ' active-openai' : '');
+
+  updateTopBadge();
+}
+
+function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+function updateTopBadge() {
+  const badge = document.getElementById('topBadge');
+  const label = document.getElementById('topBadgeLabel');
+  const p = state.provider;
+  const hasKey = p === 'claude' ? !!state.claudeKey : !!state.openaiKey;
+
+  badge.className = 'provider-badge';
+  if (!hasKey) {
+    badge.classList.add('badge-none');
+    label.textContent = 'NO KEY';
+  } else if (p === 'claude') {
+    badge.classList.add('badge-claude');
+    label.textContent = 'CLAUDE';
+  } else {
+    badge.classList.add('badge-openai');
+    label.textContent = 'GPT-4o';
+  }
+}
+
+// ── KEY MANAGEMENT ──
+function saveKey(provider) {
+  const inputId = provider === 'claude' ? 'claudeKeyInput' : 'openaiKeyInput';
+  const val = document.getElementById(inputId).value.trim();
+
+  const prefix = provider === 'claude' ? 'sk-ant-' : 'sk-';
+  if (!val.startsWith('sk-')) {
+    alert(`Please enter a valid ${provider === 'claude' ? 'Anthropic' : 'OpenAI'} API key starting with sk-`);
+    return;
+  }
+
+  if (provider === 'claude') {
+    state.claudeKey = val;
+    localStorage.setItem(STORAGE_CLAUDE, val);
+  } else {
+    state.openaiKey = val;
+    localStorage.setItem(STORAGE_OPENAI, val);
+  }
+
+  document.getElementById(inputId).value = '';
+  showKeyStatus(provider, true);
+  selectProvider(provider);
+  document.getElementById('keyBanner').style.display = 'none';
+  updateTopBadge();
+}
+
+function clearKey(provider) {
+  if (!confirm(`Clear saved ${provider === 'claude' ? 'Anthropic' : 'OpenAI'} API key?`)) return;
+  if (provider === 'claude') {
+    state.claudeKey = '';
+    localStorage.removeItem(STORAGE_CLAUDE);
+  } else {
+    state.openaiKey = '';
+    localStorage.removeItem(STORAGE_OPENAI);
+  }
+  showKeyStatus(provider, false);
+  updateTopBadge();
+  const hasAnyKey = state.claudeKey || state.openaiKey;
+  if (!hasAnyKey) document.getElementById('keyBanner').style.display = 'flex';
+}
+
+function showKeyStatus(provider, show) {
+  const el = document.getElementById(provider + 'KeyStatus');
+  el.style.display = show ? 'flex' : 'none';
+}
+
+// ── MODAL ──
+function openModal() {
+  document.getElementById('overlay').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('overlay').classList.remove('open');
+}
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('overlay')) closeModal();
+}
+
+// ── CASE ID ──
+function genId() {
+  const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let id = 'OTS-P-';
+  for (let i = 0; i < 8; i++) id += c[Math.floor(Math.random() * c.length)];
+  return id;
+}
+
+// ── PROMPTS ──
+const SYSTEM_PROMPT = `You are a senior physical threat analyst with 20 years of experience spanning executive protection, corporate security, and open-source intelligence (OSINT). You produce structured, professional threat assessments for corporate security teams, private investigators, and analysts.
+
+Your assessments are operationally focused, professional in tone, and clearly acknowledge the difference between evidenced findings and inferred risk patterns. You do not fabricate specific named incidents. If a subject is not publicly known, state clearly that no derogatory OSINT indicators were identified and provide a calibrated baseline risk framework.
+
+Respond with exactly six sections using these EXACT delimiters:
+
+---OVERALL---
+(narrative)
+---HISTORICAL---
+(narrative)
+---CURRENT---
+(narrative)
+---FUTURE---
+(narrative)
+---CORPORATE---
+(narrative)
+---RECOMMENDATIONS---
+(narrative)
+---END---`;
+
+function buildUserPrompt(subjectBlock) {
+  return `Conduct a comprehensive OSINT-based threat analysis on the following individual. Assess: (1) threats directed at or from this person, (2) relevant open-source findings on past threats or incidents involving this subject, (3) any active or current threat indicators, (4) forward-looking risk factors or escalation potential, (5) any corporate or organizational affiliations discovered or provided, and (6) actionable recommendations for the security team.
+
+Subject:
+${subjectBlock}
+
+Deliver a thorough, professional narrative in each section. Be specific about the nature of risks where identifiable. Where open-source data is limited or the subject is a private individual, provide a well-calibrated baseline assessment and note the absence of derogatory indicators clearly.`;
+}
+
+// ── ANALYSIS ──
+async function runAnalysis() {
+  const activeKey = state.provider === 'claude' ? state.claudeKey : state.openaiKey;
+  if (!activeKey) { openModal(); return; }
+
+  const name    = document.getElementById('fName').value.trim();
+  const alias   = document.getElementById('fAlias').value.trim();
+  const loc     = document.getElementById('fLoc').value.trim();
+  const company = document.getElementById('fCompany').value.trim();
+  const context = document.getElementById('fContext').value.trim();
+  if (!name) { document.getElementById('fName').focus(); return; }
+
+  document.getElementById('errBar').classList.remove('on');
+  document.getElementById('rptContainer').classList.remove('on');
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('streamBar').classList.add('on');
+
+  // Provider tag on stream bar
+  const provTag = document.getElementById('streamProvTag');
+  if (state.provider === 'claude') {
+    provTag.textContent = 'CLAUDE';
+    provTag.className = 'prov-tag prov-tag-claude';
+  } else {
+    provTag.textContent = 'GPT-4o';
+    provTag.className = 'prov-tag prov-tag-openai';
+  }
+
+  const msgs = [
+    'Querying open-source intelligence channels...',
+    'Cross-referencing threat pattern databases...',
+    'Analyzing historical incident indicators...',
+    'Assessing forward-looking risk vectors...',
+    'Compiling corporate nexus data...',
+    'Synthesizing analyst narrative...'
+  ];
+  let mi = 0;
+  const msgEl = document.getElementById('streamMsg');
+  const ticker = setInterval(() => { mi = (mi + 1) % msgs.length; msgEl.textContent = msgs[mi]; }, 2600);
+
+  const subjectBlock = [
+    `Full Name: ${name}`,
+    alias   ? `Known Alias: ${alias}`               : null,
+    loc     ? `Location/Region: ${loc}`              : null,
+    company ? `Affiliated Organization: ${company}`  : null,
+    context ? `Additional Context: ${context}`       : null
+  ].filter(Boolean).join('\n');
+
+  try {
+    let raw = '';
+    if (state.provider === 'claude') {
+      raw = await callClaude(subjectBlock, state.claudeKey);
+    } else {
+      raw = await callOpenAI(subjectBlock, state.openaiKey);
+    }
+    renderReport(raw, name, company);
+  } catch (err) {
+    document.getElementById('errMsg').textContent = err.message || 'Unknown error. Verify API key and network.';
+    document.getElementById('errBar').classList.add('on');
+  } finally {
+    clearInterval(ticker);
+    document.getElementById('streamBar').classList.remove('on');
+    document.getElementById('analyzeBtn').disabled = false;
+  }
+}
+
+// ── CLAUDE API ──
+async function callClaude(subjectBlock, key) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-opus-4-5',
+      max_tokens: 2200,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: buildUserPrompt(subjectBlock) }]
+    })
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error('Anthropic: ' + (e.error?.message || `HTTP ${res.status}`));
+  }
+  const data = await res.json();
+  return data.content?.[0]?.text || '';
+}
+
+// ── OPENAI API ──
+async function callOpenAI(subjectBlock, key) {
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${key}`
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      max_tokens: 2200,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user',   content: buildUserPrompt(subjectBlock) }
+      ]
+    })
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error('OpenAI: ' + (e.error?.message || `HTTP ${res.status}`));
+  }
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content || '';
+}
+
+// ── PARSE + RENDER ──
+function extract(tag, text) {
+  const re = new RegExp(`---${tag}---\\s*([\\s\\S]*?)(?=---[A-Z]+---|$)`);
+  const m = text.match(re);
+  return m ? m[1].trim() : '';
+}
+
+function renderReport(raw, name, company) {
+  const overall = extract('OVERALL',         raw);
+  const hist    = extract('HISTORICAL',      raw);
+  const curr    = extract('CURRENT',         raw);
+  const future  = extract('FUTURE',          raw);
+  const corp    = extract('CORPORATE',       raw);
+  const recs    = extract('RECOMMENDATIONS', raw);
+
+  document.getElementById('rName').textContent = name;
+  const coEl = document.getElementById('rCo');
+  if (company) { coEl.textContent = company; coEl.style.display = 'block'; }
+  else { coEl.style.display = 'none'; }
+
+  const ts  = new Date().toLocaleString('en-US', { month:'short', day:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  const cid = genId();
+  document.getElementById('rTs').textContent  = ts;
+  document.getElementById('rCid').textContent = cid;
+
+  const aiBadge = document.getElementById('rAiBadge');
+  if (state.provider === 'claude') {
+    aiBadge.textContent = 'Claude Opus';
+    aiBadge.className = 'ai-badge badge-claude';
+  } else {
+    aiBadge.textContent = 'GPT-4o';
+    aiBadge.className = 'ai-badge badge-openai';
+  }
+
+  document.getElementById('rOverall').textContent  = overall || 'No data returned for this section.';
+  document.getElementById('rHist').textContent     = hist    || 'No historical indicators identified.';
+  document.getElementById('rCurrent').textContent  = curr    || 'No current threat activity identified.';
+  document.getElementById('rFuture').textContent   = future  || 'No forward-looking indicators identified.';
+  document.getElementById('rCorp').textContent     = corp    || 'No corporate nexus identified.';
+  document.getElementById('rRecs').textContent     = recs    || 'No specific recommendations generated.';
+
+  const providerLabel = state.provider === 'claude' ? 'Claude Opus' : 'GPT-4o';
+  reportText = [
+    'OSINT PERSON THREAT ANALYSIS',
+    `Subject: ${name}${company ? ' / ' + company : ''}`,
+    `Generated: ${ts}`,
+    `Case ID: ${cid}`,
+    `AI Provider: ${providerLabel}`,
+    '',
+    '═══ OVERALL THREAT ASSESSMENT ═══', overall, '',
+    '═══ HISTORICAL THREAT INDICATORS ═══', hist, '',
+    '═══ CURRENT THREAT ACTIVITY ═══', curr, '',
+    '═══ FORWARD-LOOKING RISK INDICATORS ═══', future, '',
+    '═══ CORPORATE & ORGANIZATIONAL NEXUS ═══', corp, '',
+    '═══ ANALYST RECOMMENDATIONS ═══', recs
+  ].join('\n');
+
+  document.getElementById('rptContainer').classList.add('on');
+  document.getElementById('rptContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── COPY ──
+function copyRpt() {
+  navigator.clipboard.writeText(reportText).then(() => {
+    const b = document.querySelector('[onclick="copyRpt()"]');
+    const orig = b.textContent;
+    b.textContent = '✓  COPIED';
+    setTimeout(() => b.textContent = orig, 2000);
+  });
+}
+
+// ── RESET ──
+function resetForm() {
+  ['fName','fAlias','fLoc','fCompany','fContext'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('rptContainer').classList.remove('on');
+  document.getElementById('errBar').classList.remove('on');
+  reportText = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── SERVICE WORKER ──
+// Skip registration in preview/sandbox environments
+const isSandbox = location.hostname.includes('claudeusercontent.com') || location.hostname === 'localhost';
+if ('serviceWorker' in navigator && !isSandbox) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(r => console.log('OTS SW:', r.scope))
+      .catch(e => console.warn('OTS SW failed:', e));
+  });
+}
+
+// ── KEYBOARD ──
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) runAnalysis();
+});
+
+// ── START ──
+init();
+</script>
+</body>
+</html>
